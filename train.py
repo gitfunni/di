@@ -116,17 +116,31 @@ if _UNSLOTH_OK:
     dataset_tok = dataset.map(tokenize, batched=True, remove_columns=dataset.column_names)
     print(f"Dataset size: {len(dataset_tok)} examples")
 
-    trainer = FastLanguageModel.get_trainer(
-        model=model,
-        tokenizer=tokenizer,
-        dataset=dataset_tok,
-        output_dir=output_dir,
-        per_device_train_batch_size=batch_size,
-        gradient_accumulation_steps=grad_accum,
-        learning_rate=5e-5,
-        num_train_epochs=epochs,
-        max_seq_length=max_seq_length,
-    )
+from unsloth import UnslothTrainer
+from transformers import TrainingArguments
+
+training_args = TrainingArguments(
+    output_dir=output_dir,
+    per_device_train_batch_size=batch_size,
+    gradient_accumulation_steps=grad_accum,
+    learning_rate=5e-5,
+    num_train_epochs=epochs,
+    logging_steps=10,
+    save_strategy="no",
+    report_to=[],
+    bf16=torch.cuda.is_bf16_supported(),
+    fp16=not torch.cuda.is_bf16_supported(),
+    optim="paged_adamw_32bit",
+    max_steps=pilot_steps,
+)
+
+trainer = UnslothTrainer(
+    model=model,
+    args=training_args,
+    tokenizer=tokenizer,
+    train_dataset=dataset_tok,
+)
+
 
     trainer.args.max_steps = pilot_steps
     print(f"Running pilot ({pilot_steps} steps) with Unsloth...")
